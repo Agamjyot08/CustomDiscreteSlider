@@ -6,71 +6,55 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
-import com.agamjyot.customdiscreteslider.R
-import kotlin.math.max
-import kotlin.math.min
 
 class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
-    private val barDrawable = ContextCompat.getDrawable(context, R.drawable.rangebar_drawable)
+    private val barHeight = 150f
+    private var currentSlidingBaselineCode: Int = -1
 
-    private val barHeight = 100f
-    private val sliderRadius = 20f
+    private val sliderOptions: MutableList<SliderOption> = mutableListOf()
+    private val baseLineCodeList = mutableListOf<BaselineCode>()
 
-    private var sliderCount: Int = 0
-    private val sliderPositions: MutableList<Float> = mutableListOf()
-    private val sliderValues: MutableList<Float> = mutableListOf()
-
-    private val sliderWidth = 30f
-    private val sliderHeight = 150f
     private val sliderPaint = Paint()
-    private val sliderFillColor = Color.WHITE
+    private val mainSliderPaint by lazy {
+        Paint().apply {
+            color = Color.WHITE
+        }
+    }
+    private val sliderWidth = 30f
+    private val totalWidthWithoutSliders: Float
+        get() = (width - (sliderWidth * (sliderOptions.size - 1)))
 
     private var rangeStart: Float = 0f
     private var rangeEnd: Float = 100f
 
-    private val touchSlop = 10
-    private var activeSliderIndex = -1
-    private var activeSliderOffset = 0f
     private var onSliderChangeListener: OnSliderChangeListener? = null
+    private val rect = RectF()
+    private val sliderRect = RectF()
+    private var stepSize = 10
 
     interface OnSliderChangeListener {
-        fun onSliderValueChanged(sliderIndex: Int, newValue: Float)
+        fun onSliderValueChanged(sliderOptions: List<SliderOption>)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val x = event.x
-        val y = event.y
-
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                for (i in 0 until sliderCount) {
-                    val xPos = getSliderXPosition(i)
-                    if (x >= xPos - sliderRadius && x <= xPos + sliderRadius) {
-                        activeSliderIndex = i
-                        activeSliderOffset = x - xPos
-                        break
-                    }
+                baseLineCodeList.firstOrNull {
+                    x in it.start..it.end
+                }?.let {
+                    currentSlidingBaselineCode = baseLineCodeList.indexOf(it)
                 }
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                if (activeSliderIndex != -1) {
-                    val newSliderPosition = min(max(x / width, 0f), 1f)
-                    val leftSliderPosition = if (activeSliderIndex > 0) sliderPositions[activeSliderIndex - 1] else 0f
-                    val rightSliderPosition =
-                        if (activeSliderIndex < sliderCount - 1) sliderPositions[activeSliderIndex + 1] else 1f
-                    if (newSliderPosition >= leftSliderPosition && newSliderPosition <= rightSliderPosition) {
-                        sliderPositions[activeSliderIndex] = newSliderPosition
-                        sliderValues[activeSliderIndex] = mapPositionToValue(newSliderPosition)
-                        onSliderChangeListener?.onSliderValueChanged(activeSliderIndex, sliderValues[activeSliderIndex])
-                        invalidate()
-                    }
-                    return true
-                }
+                moveBaselineCode(x, false)
+                return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                activeSliderIndex = -1
+                moveBaselineCode(x, true)
+                currentSlidingBaselineCode = -1
                 return true
             }
         }
@@ -78,12 +62,49 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
         return super.onTouchEvent(event)
     }
 
-    fun setSliderCount(count: Int, positions: List<Float>, values: List<Float>) {
-        sliderCount = count
-        sliderPositions.clear()
-        sliderPositions.addAll(positions)
-        sliderValues.clear()
-        sliderValues.addAll(values)
+    private fun moveBaselineCode(x: Float, nearest: Boolean) {
+        if (currentSlidingBaselineCode >= 0) {
+            val sliderOption = sliderOptions[currentSlidingBaselineCode]
+            val currPercentage =
+                if (nearest) findNearest((x / totalWidthWithoutSliders) * 100) else
+                    (x / totalWidthWithoutSliders) * 100
+
+            var sumTillIndex = 0f
+            for (i in 0..currentSlidingBaselineCode) {
+                sumTillIndex += sliderOptions[i].value
+            }
+            val diff = (sumTillIndex - currPercentage)
+            sliderOption.value = if (nearest) findNearest(sliderOption.value + (-1 * diff)) else sliderOption.value + (-1 * diff)
+            sliderOptions.removeAt(currentSlidingBaselineCode)
+            sliderOptions.add(currentSlidingBaselineCode, sliderOption)
+
+            val nextOption = sliderOptions[currentSlidingBaselineCode + 1]
+            nextOption.value = if (nearest) findNearest(nextOption.value + diff) else nextOption.value + diff
+            sliderOptions.removeAt(currentSlidingBaselineCode + 1)
+            sliderOptions.add(currentSlidingBaselineCode + 1, nextOption)
+
+            invalidate()
+            onSliderChangeListener?.onSliderValueChanged(sliderOptions)
+        }
+    }
+
+    private fun findNearest(number: Float): Float {
+        val remainder = number % stepSize
+        val nearestMultiple = if (remainder < 3) {
+            number - remainder
+        } else {
+            number + (stepSize - remainder)
+        }
+        return nearestMultiple
+    }
+
+    fun setSliderOptions(options: List<SliderOption>) {
+        sliderOptions.clear()
+        sliderOptions.addAll(
+            options.map {
+                it.copy(value = (it.value / rangeEnd) * 100)
+            }
+        )
         invalidate()
     }
 
@@ -93,35 +114,56 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
         invalidate()
     }
 
-    private fun getSliderXPosition(index: Int): Float {
-        return sliderPositions[index] * width
-    }
-
-    fun mapPositionToValue(position: Float): Float {
-        return rangeStart + (position * (rangeEnd - rangeStart))
-    }
-
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        if (sliderOptions.isEmpty())
+            return
+
+        var sliderLastPosition = 0F
 
         val barTop = height / 2 - barHeight / 2
         val barBottom = height / 2 + barHeight / 2
-        barDrawable?.setBounds(0, barTop.toInt(), width, barBottom.toInt())
-        barDrawable?.draw(canvas)
+        baseLineCodeList.clear()
+        sliderOptions.forEachIndexed { index, sliderOption ->
+            val currentWidth =
+                sliderLastPosition + ((sliderOption.value * totalWidthWithoutSliders) / 100)
+            rect.set(sliderLastPosition, barTop, currentWidth, barBottom)
+            sliderPaint.color = Color.parseColor(sliderOption.color)
+            canvas.drawRect(rect, sliderPaint)
 
-        for (i in 0 until sliderCount) {
-            val xPos = getSliderXPosition(i)
-            val yPos = height / 2
+            sliderLastPosition = currentWidth + sliderWidth
+            sliderRect.set(currentWidth, barTop, sliderLastPosition, barBottom)
+            canvas.drawRect(sliderRect, mainSliderPaint)
 
-            val left = (xPos - sliderWidth / 2).toInt()
-            val top = (yPos - sliderHeight / 2).toInt()
-            val right = (xPos + sliderWidth / 2).toInt()
-            val bottom = (yPos + sliderHeight / 2).toInt()
-            sliderPaint.color = sliderFillColor
-            canvas.drawRect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat(), sliderPaint)
+            if (index != sliderOptions.lastIndex) {
+                val baseLineCode = ContextCompat.getDrawable(context, R.drawable.rounded_code)
+                val baseLingWidth = 84
+                val roundedCodeLeft = (currentWidth - (baseLingWidth / 2) + (sliderWidth / 2))
+                val roundedCodeRight = (roundedCodeLeft + baseLingWidth)
+                baseLineCode?.setBounds(
+                    roundedCodeLeft.toInt(),
+                    barBottom.toInt(),
+                    roundedCodeRight.toInt(),
+                    (barBottom + baseLingWidth).toInt()
+                )
+                baseLineCodeList.add(BaselineCode(roundedCodeLeft, roundedCodeRight, index))
+                baseLineCode?.draw(canvas)
+            }
         }
     }
+
     fun setOnSliderChangeListener(listener: OnSliderChangeListener) {
         onSliderChangeListener = listener
     }
 }
+
+data class SliderOption(
+    val color: String,
+    var value: Float
+)
+
+data class BaselineCode(
+    val start: Float,
+    val end: Float,
+    val index: Int
+)
