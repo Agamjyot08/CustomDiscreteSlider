@@ -1,8 +1,12 @@
 package com.agamjyot.customdiscreteslider
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.util.AttributeSet
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
@@ -63,6 +67,7 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
     }
 
     private fun moveBaselineCode(x: Float, nearest: Boolean) {
+        val baselineCodeMutableList = baseLineCodeList
         if (currentSlidingBaselineCode >= 0) {
             val sliderOption = sliderOptions[currentSlidingBaselineCode]
             val currPercentage =
@@ -74,18 +79,49 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
                 sumTillIndex += sliderOptions[i].value
             }
             val diff = (sumTillIndex - currPercentage)
-            sliderOption.value = if (nearest) findNearest(sliderOption.value + (-1 * diff)) else sliderOption.value + (-1 * diff)
+
+            Log.e("TAG", "currentSlidingBaselineCode: $currentSlidingBaselineCode")
+
+            val minSliderValue = if (currentSlidingBaselineCode > 0) {
+                baseLineCodeList[currentSlidingBaselineCode - 1].end
+            } else {
+                0f
+            }
+            val maxSliderValue = if (currentSlidingBaselineCode < baseLineCodeList.size - 1) {
+                baseLineCodeList[currentSlidingBaselineCode + 1].start
+            } else {
+                width.toFloat()
+            }
+
+            Log.e("TAG", "current value: ${baseLineCodeList[currentSlidingBaselineCode]}")
+            Log.e("TAG", "minSliderValue: $minSliderValue")
+            Log.e("TAG", "maxSliderValue: $maxSliderValue")
+
+            sliderOption.value =
+                if (nearest) findNearest(sliderOption.value + (-1 * diff)) else sliderOption.value + (-1 * diff)
             sliderOptions.removeAt(currentSlidingBaselineCode)
             sliderOptions.add(currentSlidingBaselineCode, sliderOption)
 
             val nextOption = sliderOptions[currentSlidingBaselineCode + 1]
-            nextOption.value = if (nearest) findNearest(nextOption.value + diff) else nextOption.value + diff
+            nextOption.value =
+                if (nearest) findNearest(nextOption.value + diff) else nextOption.value + diff
             sliderOptions.removeAt(currentSlidingBaselineCode + 1)
             sliderOptions.add(currentSlidingBaselineCode + 1, nextOption)
 
             invalidate()
             onSliderChangeListener?.onSliderValueChanged(sliderOptions)
         }
+    }
+
+    private fun setInRange(min: Float, max: Float, value: Float): Float {
+        var finalValue = value
+        if (value > max) {
+            finalValue = max
+        }
+        if (value < min) {
+            finalValue = max
+        }
+        return finalValue
     }
 
     private fun findNearest(number: Float): Float {
@@ -142,7 +178,7 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
                 val roundedCodeRight = (roundedCodeLeft + baseLingWidth)
                 baseLineCode?.setBounds(
                     roundedCodeLeft.toInt(),
-                    barBottom.toInt(),
+                    barBottom.toInt() - 10,
                     roundedCodeRight.toInt(),
                     (barBottom + baseLingWidth).toInt()
                 )
@@ -163,7 +199,7 @@ data class SliderOption(
 )
 
 data class BaselineCode(
-    val start: Float,
-    val end: Float,
+    var start: Float,
+    var end: Float,
     val index: Int
 )
