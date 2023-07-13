@@ -25,6 +25,10 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
             color = Color.WHITE
         }
     }
+
+    var minSliderValue = 0f
+    var maxSliderValue = width.toFloat()
+
     private val sliderWidth = 30f
     private val totalWidthWithoutSliders: Float
         get() = (width - (sliderWidth * (sliderOptions.size - 1)))
@@ -53,11 +57,21 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                moveBaselineCode(x, false)
+                minSliderValue = if (currentSlidingBaselineCode > 0) {
+                    baseLineCodeList[currentSlidingBaselineCode - 1].end
+                } else {
+                    0f
+                }
+                maxSliderValue = if (currentSlidingBaselineCode < baseLineCodeList.size - 1) {
+                    baseLineCodeList[currentSlidingBaselineCode + 1].start
+                } else {
+                    width.toFloat()
+                }
+                moveBaselineCode(x.coerceIn(minSliderValue, maxSliderValue), false)
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                moveBaselineCode(x, true)
+                moveBaselineCode(x.coerceIn(minSliderValue, maxSliderValue), false)
                 currentSlidingBaselineCode = -1
                 return true
             }
@@ -113,17 +127,6 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
         }
     }
 
-    private fun setInRange(min: Float, max: Float, value: Float): Float {
-        var finalValue = value
-        if (value > max) {
-            finalValue = max
-        }
-        if (value < min) {
-            finalValue = max
-        }
-        return finalValue
-    }
-
     private fun findNearest(number: Float): Float {
         val remainder = number % stepSize
         val nearestMultiple = if (remainder < 3) {
@@ -163,13 +166,22 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
         sliderOptions.forEachIndexed { index, sliderOption ->
             val currentWidth =
                 sliderLastPosition + ((sliderOption.value * totalWidthWithoutSliders) / 100)
-            rect.set(sliderLastPosition, barTop, currentWidth, barBottom)
-            sliderPaint.color = Color.parseColor(sliderOption.color)
-            canvas.drawRect(rect, sliderPaint)
+
+            if (index == 0) {
+                rect.set(sliderLastPosition, barTop, currentWidth, barBottom)
+                sliderPaint.color = Color.parseColor(sliderOption.color)
+                canvas.drawRoundRect(rect, 20f, 20f, sliderPaint)
+            } else if (index == sliderOptions.size - 1) {
+                sliderRect.set(sliderLastPosition, barTop, currentWidth, barBottom)
+                sliderPaint.color = Color.parseColor(sliderOption.color)
+                canvas.drawRoundRect(sliderRect, 20f, 20f, sliderPaint)
+            } else {
+                rect.set(sliderLastPosition, barTop, currentWidth, barBottom)
+                sliderPaint.color = Color.parseColor(sliderOption.color)
+                canvas.drawRect(rect, sliderPaint)
+            }
 
             sliderLastPosition = currentWidth + sliderWidth
-            sliderRect.set(currentWidth, barTop, sliderLastPosition, barBottom)
-            canvas.drawRect(sliderRect, mainSliderPaint)
 
             if (index != sliderOptions.lastIndex) {
                 val baseLineCode = ContextCompat.getDrawable(context, R.drawable.rounded_code)

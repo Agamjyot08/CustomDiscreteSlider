@@ -15,12 +15,6 @@ class MainActivity : AppCompatActivity() {
         customRangeSliderView = findViewById(R.id.customRangeSliderView)
         customRangeSliderView.setRange(0f, 100f)
 
-//        val sliderPositions = listOf(0.2f, 0.4f, 0.6f)
-//        val sliderValues = sliderPositions.map { position ->
-//            customRangeSliderView.mapPositionToValue(position)
-//        }
-//        customRangeSliderView.setSliderCount(3, sliderPositions, sliderValues)
-
         val options = listOf(
             SliderOption("#017AFF", 30f),
             SliderOption("#33A34D", 30f),
