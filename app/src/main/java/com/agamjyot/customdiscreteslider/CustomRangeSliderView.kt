@@ -29,7 +29,7 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
     var minSliderValue = 0f
     var maxSliderValue = width.toFloat()
 
-    private val sliderWidth = 30f
+    private val sliderWidth = 20f
     private val totalWidthWithoutSliders: Float
         get() = (width - (sliderWidth * (sliderOptions.size - 1)))
 
@@ -39,7 +39,7 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
     private var onSliderChangeListener: OnSliderChangeListener? = null
     private val rect = RectF()
     private val sliderRect = RectF()
-    private var stepSize = 10
+    private var stepSize = 5
 
     interface OnSliderChangeListener {
         fun onSliderValueChanged(sliderOptions: List<SliderOption>)
@@ -71,7 +71,7 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                moveBaselineCode(x.coerceIn(minSliderValue, maxSliderValue), false)
+                moveBaselineCode(x.coerceIn(minSliderValue, maxSliderValue), true)
                 currentSlidingBaselineCode = -1
                 return true
             }
