@@ -60,13 +60,16 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
                 minSliderValue = if (currentSlidingBaselineCode > 0) {
                     baseLineCodeList[currentSlidingBaselineCode - 1].end
                 } else {
-                    0f
+                    sliderWidth
                 }
                 maxSliderValue = if (currentSlidingBaselineCode < baseLineCodeList.size - 1) {
                     baseLineCodeList[currentSlidingBaselineCode + 1].start
                 } else {
-                    width.toFloat()
+                    totalWidthWithoutSliders
                 }
+                Log.e("TAG", "current value: $x")
+                Log.e("TAG", "minSliderValue: $minSliderValue")
+                Log.e("TAG", "maxSliderValue: $maxSliderValue")
                 moveBaselineCode(x.coerceIn(minSliderValue, maxSliderValue), false)
                 return true
             }
@@ -81,7 +84,6 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
     }
 
     private fun moveBaselineCode(x: Float, nearest: Boolean) {
-        val baselineCodeMutableList = baseLineCodeList
         if (currentSlidingBaselineCode >= 0) {
             val sliderOption = sliderOptions[currentSlidingBaselineCode]
             val currPercentage =
@@ -95,21 +97,6 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
             val diff = (sumTillIndex - currPercentage)
 
             Log.e("TAG", "currentSlidingBaselineCode: $currentSlidingBaselineCode")
-
-            val minSliderValue = if (currentSlidingBaselineCode > 0) {
-                baseLineCodeList[currentSlidingBaselineCode - 1].end
-            } else {
-                0f
-            }
-            val maxSliderValue = if (currentSlidingBaselineCode < baseLineCodeList.size - 1) {
-                baseLineCodeList[currentSlidingBaselineCode + 1].start
-            } else {
-                width.toFloat()
-            }
-
-            Log.e("TAG", "current value: ${baseLineCodeList[currentSlidingBaselineCode]}")
-            Log.e("TAG", "minSliderValue: $minSliderValue")
-            Log.e("TAG", "maxSliderValue: $maxSliderValue")
 
             sliderOption.value =
                 if (nearest) findNearest(sliderOption.value + (-1 * diff)) else sliderOption.value + (-1 * diff)
@@ -144,6 +131,11 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
                 it.copy(value = (it.value / rangeEnd) * 100)
             }
         )
+        invalidate()
+    }
+
+    fun setStepSize(size: Int) {
+        stepSize = size
         invalidate()
     }
 

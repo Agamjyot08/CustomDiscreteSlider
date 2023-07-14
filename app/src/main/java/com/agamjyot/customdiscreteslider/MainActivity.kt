@@ -14,6 +14,7 @@ class MainActivity : AppCompatActivity() {
 
         customRangeSliderView = findViewById(R.id.customRangeSliderView)
         customRangeSliderView.setRange(0f, 100f)
+        customRangeSliderView.setStepSize(5)
 
         val options = listOf(
             SliderOption("#017AFF", 30f),
