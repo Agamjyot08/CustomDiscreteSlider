@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
+import kotlin.math.max
 
 class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(context, attrs) {
 
@@ -26,12 +27,12 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
         }
     }
 
-    var minSliderValue = 0f
-    var maxSliderValue = width.toFloat()
-
     private val sliderWidth = 20f
     private val totalWidthWithoutSliders: Float
         get() = (width - (sliderWidth * (sliderOptions.size - 1)))
+
+    private var minSliderValue = 0f
+    private var maxSliderValue = totalWidthWithoutSliders
 
     private var rangeStart: Float = 0f
     private var rangeEnd: Float = 100f
@@ -67,9 +68,7 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
                 } else {
                     totalWidthWithoutSliders
                 }
-                Log.e("TAG", "current value: $x")
-                Log.e("TAG", "minSliderValue: $minSliderValue")
-                Log.e("TAG", "maxSliderValue: $maxSliderValue")
+
                 moveBaselineCode(x.coerceIn(minSliderValue, maxSliderValue), false)
                 return true
             }
@@ -96,16 +95,23 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
             }
             val diff = (sumTillIndex - currPercentage)
 
-            Log.e("TAG", "currentSlidingBaselineCode: $currentSlidingBaselineCode")
-
+            var effectiveDiff = 0f
             sliderOption.value =
                 if (nearest) findNearest(sliderOption.value + (-1 * diff)) else sliderOption.value + (-1 * diff)
+            Log.e("TAG", "and curr is now : ${sliderOption.value}")
+            if (sliderOption.value < sliderOption.min) {
+                Log.e("TAG", "LESS THAN MIN, min is : ${sliderOption.min}")
+                Log.e("TAG", "effective diff is : ${sliderOption.min - sliderOption.value}")
+                effectiveDiff = sliderOption.min - sliderOption.value
+                sliderOption.value = sliderOption.min
+            }
             sliderOptions.removeAt(currentSlidingBaselineCode)
             sliderOptions.add(currentSlidingBaselineCode, sliderOption)
 
             val nextOption = sliderOptions[currentSlidingBaselineCode + 1]
             nextOption.value =
-                if (nearest) findNearest(nextOption.value + diff) else nextOption.value + diff
+                if (nearest) findNearest(nextOption.value + diff - effectiveDiff) else nextOption.value + diff - effectiveDiff
+            Log.e("TAG", "and next value: ${nextOption.value}")
             sliderOptions.removeAt(currentSlidingBaselineCode + 1)
             sliderOptions.add(currentSlidingBaselineCode + 1, nextOption)
 
@@ -199,7 +205,8 @@ class CustomRangeSliderView(context: Context, attrs: AttributeSet?) : View(conte
 
 data class SliderOption(
     val color: String,
-    var value: Float
+    var value: Float,
+    val min: Float
 )
 
 data class BaselineCode(

@@ -17,17 +17,17 @@ class MainActivity : AppCompatActivity() {
         customRangeSliderView.setStepSize(5)
 
         val options = listOf(
-            SliderOption("#017AFF", 30f),
-            SliderOption("#33A34D", 30f),
-            SliderOption("#283964", 20f),
-            SliderOption("#ff0000", 20f)
+            SliderOption("#017AFF", 30f, 5f),
+            SliderOption("#33A34D", 30f, 10f),
+            SliderOption("#283964", 20f, 10f),
+            SliderOption("#ff0000", 20f, 0f)
         )
 
         customRangeSliderView.setSliderOptions(options)
 
         customRangeSliderView.setOnSliderChangeListener(object : CustomRangeSliderView.OnSliderChangeListener {
             override fun onSliderValueChanged(sliderOptions: List<SliderOption>) {
-                Log.e("TAG", "onSliderValueChanged: ${sliderOptions.map { it.value }}")
+//                Log.e("TAG", "onSliderValueChanged: ${sliderOptions.map { it.value }}")
             }
         })
     }
